@@ -218,7 +218,14 @@ def test_MAB_pairs(n_iter, nk_pairs, T_max, r=all_large, csvfile='pair_results.c
 
 # Test to find the optimal parameters
 # on a given (N,K), generate a mu and test the same function with different parameters
-def test_MAB_stability(n, k, T_max, r=np.random.rand, csvfile='results.csv'):
+#    Either tests the constants C on the added values in the NSW algorithms, or
+#    tests deltSet as values of delta in the PGA for NSW2 (to deal with pseudo-concavity)
+def test_MAB_stability(n, k, T_max, r=np.random.rand, csvfile='results.csv', CSet=None, deltSet=None):
+    if CSet is None and deltSet is None:
+        return None
+    if not (CSet is None or deltSet is None):
+        return None
+    # Initialize values
     write_file = open(csvfile, 'w')
     print("TestData", file=write_file)
     mu = r(size=(n,k))
@@ -231,64 +238,77 @@ def test_MAB_stability(n, k, T_max, r=np.random.rand, csvfile='results.csv'):
     p_star = NSW.max_NSW(mu, init_guess=([1/k] * k), n=n, k=k, delt=0.000000001)
     NSW_star = NSW.NSW(mu, p_star, n=n, k=k)
     print(" Computed p_star: \n", p_star)
-    
-    delt = 0.00016
-    delts = []
+
+    # initialize accumulators
     NSWs2 = []
-    for j in range(4):
-        print("--------- J:", j, "---------")
-        delt = delt / 4
-        delts.append(delt)
-        NSWs_2, p_hat_2, NSW_max_2, best_p_2 = NSW2.results(mu, T_max, alphaN, checkpointing=50000, delt=delt)
-        if NSW_max_2 > NSW_star:
-            NSW_star = NSW_max_2
-            p_star = best_p_2
-        NSWs2.append(NSWs_2)
-        print(len(NSWs2))
-        print(len(NSWs2[j]))
-
-    
-    for j in range(4):
-        cregs2 = []
-        creg = 0
-        cregs2.append(creg)
-        for i in range(len(NSWs2[j])):
-            creg = creg + (NSW_star - NSWs2[j][i])
-            cregs2.append(creg)
-        plt.plot(cregs2, label=('Delt = ' + str(delts[j])))
-        plt.show()
-        plt.clf()
-    
-    Cs = []
     NSWs1 = []
-    for i in range(6):
-        print("--------- I:", i, "---------")
-        C = 1 + 0.2 * (i)
-        Cs.append(C)
-        NSWs_1, p_hat_1, NSW_max_1, best_p_1 = NSW.results(mu, T_max, checkpointing=50000, C=C)
-        if NSW_max_1 > NSW_star:
-            NSW_star = NSW_max_1
-            p_star = best_p_1
-        NSWs1.append(NSWs_1)
-    
-    for i in range(6):
-        cregs1 = []
-        creg = 0
-        cregs1.append(creg)
-        for j in range(len(NSWs1[i])):
-            creg = creg + (NSW_star - NSWs1[i][j])
-            cregs1.append(creg)
-        print(" C = " + str(C), file=write_file)
-        print("  T = 200,000: " + str(cregs1[200000]), file=write_file)
-        print("  T = 400,000: " + str(cregs1[400000]), file=write_file)
 
+    if CSet is not None:
+        lCSet = len(CSet)
+    if deltSet is not None:
+        ldeltSet = len(deltSet)
+
+    # test
+    if CSet is not None:
+        # test delta
+        for i in range(lCSet):
+            NSWs_1, p_hat_1, NSW_max_1, best_p_1 = NSW.results(mu, T_max, checkpointing=50000, C=CSet[i])
+            NSWs_2, p_hat_2, NSW_max_2, best_p_2 = NSW2.results(mu, T_max, alphaN, checkpointing=50000, C=CSet[i])
+            if NSW_max_1 > NSW_star:
+                NSW_star = NSW_max_1
+                p_star = best_p_1
+            if NSW_max_2 > NSW_star:
+                NSW_star = NSW_max_2
+                p_star = best_p_2
+            NSWs1.append(NSWs_1)
+            NSWs2.append(NSWs_2)
+        for i in range(lCSet):
+            cregs1 = []
+            cregs2 = []
+            creg = 0
+            cregs1.append(creg)
+            cregs2.append(creg)
+            for j in range(len(NSWs1[i])):
+                creg = creg + (NSW_star - NSWs1[i][j])
+                cregs1.append(creg)
+            creg = 0
+            for j in range(len(NSWs2[i])):
+                creg = creg + (NSW_star - NSWs2[i][j])
+                cregs2.append(creg)
+                print(" C = " + str(CSet[i]), file=write_file)
+                print(" UCB JNN")
+                print("  T = 200,000: " + str(cregs1[200000]), file=write_file)
+                print("  T = 500,000: " + str(cregs1[499995]), file=write_file)
+                print(" UCB HMS21")
+                print("  T = 200,000: " + str(cregs1[200000]), file=write_file)
+                print("  T = 500,000: " + str(cregs1[499995]), file=write_file)
+        return None
+    elif deltSet is not None:
+        # test C
+        for j in range(ldeltSet):
+            NSWs_2, p_hat_2, NSW_max_2, best_p_2 = NSW2.results(mu, T_max, alphaN, checkpointing=50000, delt=deltSet[j])
+            if NSW_max_2 > NSW_star:
+                NSW_star = NSW_max_2
+                p_star = best_p_2
+            NSWs2.append(NSWs_2)
+        for j in range(ldeltSet):
+            cregs2 = []
+            creg = 0
+            cregs2.append(creg)
+            for i in range(len(NSWs2[j])):
+                creg = creg + (NSW_star - NSWs2[j][i])
+                cregs2.append(creg)
+            plt.plot(cregs2, label=('Delt = ' + str(deltSet[j])))
+            plt.show()
+            plt.clf()
+        return None
         
     
 # main
 # example calls, right now it is set to test pairs but this can be switched
 if __name__ == "__main__":
-    test_MAB_pairs(5, [(80,8), (20,4), (4,2)], 500000, r=exp_large, plotfolder='pair_plots/')
-    #test_MAB_stability(4, 4, 400020, r=all_large, csvfile='results.csv')
+    #test_MAB_pairs(5, [(80,8), (20,4), (4,2)], 500000, r=exp_large, plotfolder='pair_plots/')
+    test_MAB_stability(4, 4, 500000, r=all_large, csvfile='results.csv', CSet=[0.2,0.4,0.6,0.8,1])
     #test_MAB_many(8, [32, 64], [2, 4, 8, 16], 500000, r=all_large, csvfile='results.csv', plotfolder = 'plots/', nsw3=False)
     #_, _, _, _ = test_MAB(n=25, k=10, r=all_large, T=250000, prnt=True)
     #print("Last p_hat:\n",p_hat)
