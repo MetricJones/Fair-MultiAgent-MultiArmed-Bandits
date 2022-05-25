@@ -1,0 +1,33 @@
+Experiments for Fair Multi-Agent Multi-Armed Bandits
+05/26/22
+
+The code for this is split into a small handful of files:
+- pgd.py: Responsible for code to run projected gradient descent
+    on a simplex. The projection is handled by the file, functions to
+    compute the objective and its gradient should be inputs to the
+    main function.
+- NSW.py: Implementation of our algorithm. Also contains functions
+    for computing the NSW from the inputs.
+- NSW_HMS21.py: Similar to the previous file, but for HMS21
+- main.py: Contains the main functions for the testing. Includes:
+    - test_MAB: runs a single test, generating mu if necessary
+    - test_MAB_many: runs many tests, on N in n and K in k where n
+        and k are input arrays
+    - test_MAB_pairs: similar to test_MAB_pairs, but the pairs
+        (N,K) are in an array rather than separate arrays for N and K
+    - test_MAB_stability: used to optimize parameters. At this
+        point there is no automation for this, so it works on a
+	specific N,K and runs a single test for multiple parameter
+	values. The parameter values are C, which is used as a
+	multiplier for the additive term in each algorithm, and
+	delta, which is the threshold in the PGD algorithm to
+	signal stability and halt. Note that due to the non-
+	concavity of the HMS21 objective, we may need to set delta
+	quite small, at the tradeoff of time.
+- merge_csv.py: takes the outputs of some tests and merges the csv
+    file, before storing it using pickle. This is done for two
+    reasons. First, the csvs don't seem to load well, and this can
+    read them and store them in an easier format. Second, on large
+    tests the process often halts due to memory issues, so this can
+    merge csvs from multiple tests into a single unit
+- load_csv.py: reads from pickle and prints test results.
