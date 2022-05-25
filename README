@@ -24,6 +24,7 @@ The code for this is split into a small handful of files:
 	signal stability and halt. Note that due to the non-
 	concavity of the HMS21 objective, we may need to set delta
 	quite small, at the tradeoff of time.
+	This optimization should be done separately from the tests.
 - merge_csv.py: takes the outputs of some tests and merges the csv
     file, before storing it using pickle. This is done for two
     reasons. First, the csvs don't seem to load well, and this can
