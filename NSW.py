@@ -46,6 +46,7 @@ def my_beta(mu):
             v.append(np.random.beta(mu[i], 1-mu[i]))
     return np.array(v)
 
+# binomial function
 def my_binom(mu):
     v = []
     for i in range(len(mu)):
@@ -67,7 +68,7 @@ def my_binom(mu):
 #    We also scale that person's rewards to [0,1], this directly
 #    scales NSWs. This means at least 1 mu_(i,_) is 1, so the reward
 #    is at least 1/k, and G is at most nk
-def max_NSW(mu, init_guess=None, n=None, k=None, delt=0.0005):
+def max_NSW(mu, init_guess=None, n=None, k=None, delt=0.0002):
     #print("------------ COMPUTING max_NSW -------, mu = ", mu)
     if n is None or k is None:
         (n, k) = np.shape(mu)
@@ -91,7 +92,7 @@ def max_NSW(mu, init_guess=None, n=None, k=None, delt=0.0005):
 
 # class to handle the UCB algorithm =====================================
 class MAFB_UCB:
-    def __init__(self, mu_star, initiate=True, dist_mu=my_beta, checkpointing=5000):
+    def __init__(self, mu_star, initiate=True, dist_mu=my_beta, checkpointing=5000, C=2):
         # the true mu, passed as a paramter
         self.true_mu = mu_star
         self.distr = dist_mu   # pulls from distribution which has
@@ -110,6 +111,7 @@ class MAFB_UCB:
         self.best_p = None
         self.last_p = None
         self.checkpointing = checkpointing
+        self.C=C
         self.t = 1      # t is the next iteration to run,
         if initiate:    # so we've already run t-1 iterations
             self.initiate()
@@ -148,7 +150,10 @@ class MAFB_UCB:
     def compute_p(self, init_guess=None, r_vec=None):
         if r_vec is None:
             r_vec = np.zeros((self.n, self.k))
-        return max_NSW(self.mu_hat + r_vec, init_guess=init_guess, n=self.n, k=self.k)
+        mu_temp = self.mu_hat + r_vec
+        cap = np.ones(mu_temp.shape)
+        mu_temp = np.minimum(mu_temp, cap)
+        return max_NSW(mu_temp, init_guess=init_guess, n=self.n, k=self.k)
     
     # run a single step of the UCB algorithm
     def run_step(self):
@@ -158,8 +163,12 @@ class MAFB_UCB:
             print("Iter: ",self.t)
             print("Guess: ",self.last_p)
         # Compute UCB offsets
-        r_vec = np.full((self.n, self.k), (2 * np.log(self.n * self.k * self.t)))
-        r_vec = np.sqrt(r_vec / self.ntj)
+        r_vec = (12 * np.log(4 * self.n * self.k * self.t * np.sqrt(self.t)))
+        r_vec = r_vec / self.ntj
+        inv_mus = 1 - self.mu_hat
+        inv_mus = np.sqrt(inv_mus * r_vec)
+        r_vec = r_vec + inv_mus
+        r_vec = self.C * r_vec
         p = self.compute_p(init_guess=self.last_p, r_vec=r_vec)
         self.last_p = p
         arm_to_pull = np.random.choice(range(self.k), p=p)
@@ -196,8 +205,8 @@ class MAFB_UCB:
 
 
 # wrapper for MAFB_UCB __init__
-def setup_UCB(mu_star, checkpointing=None):
-    return MAFB_UCB(mu_star, dist_mu=my_binom, checkpointing=checkpointing)
+def setup_UCB(mu_star, checkpointing=None, C=2):
+    return MAFB_UCB(mu_star, dist_mu=my_binom, checkpointing=checkpointing, C=C)
 
 # run UCB for either one step, n_steps steps, or up to T total steps
 def run_UCB(UCB, n_steps=None, T=None):
@@ -210,7 +219,7 @@ def run_UCB(UCB, n_steps=None, T=None):
         UCB.run_step()
 
 # get NSWs up to time T
-def results(mus, T, checkpointing=None):
-    UCB = setup_UCB(mus, checkpointing=checkpointing)
+def results(mus, T, checkpointing=None, C=2):
+    UCB = setup_UCB(mus, checkpointing=checkpointing, C=C)
     run_UCB(UCB, T=T)
     return UCB.NSWs, UCB.last_p, UCB.NSW_max, UCB.best_p

@@ -85,13 +85,13 @@ def max_NSWplusR(mu, alpha, r_vec, init_guess=None, n=None, k=None, delt=0.0005)
         return NSWplusR(mu, p, alpha, r_vec, n=n, k=k)
     def local_gradNSWplusR(p):
         return gradNSWplusR(mu, p, alpha, r_vec, n=n, k=k)
-    return pgd.proj_grad_asc(k, local_NSWplusR, local_gradNSWplusR, lr=lr, delt=delt, init_guess=init_guess)
+    return pgd.proj_grad_asc(k, local_NSWplusR, local_gradNSWplusR, lr=lr, lookback=25, delt=delt, init_guess=init_guess)
 
 
 
 # class to handle the UCB algorithm =====================================
 class MAFB_UCB:
-    def __init__(self, mu_star, alpha_fn, initiate=True, dist_mu=my_beta, checkpointing=5000):
+    def __init__(self, mu_star, alpha_fn, initiate=True, dist_mu=my_beta, checkpointing=5000, delt=0.000001, C=1):
         # the true mu, passed as a paramter
         self.true_mu = mu_star
         self.alpha_fn = alpha_fn
@@ -111,6 +111,8 @@ class MAFB_UCB:
         self.best_p = None
         self.last_p = None
         self.checkpointing = checkpointing
+        self.delt = delt
+        self.C = C
         self.t = 1      # t is the next iteration to run,
         if initiate:    # so we've already run t-1 iterations
             self.initiate()
@@ -151,7 +153,7 @@ class MAFB_UCB:
             r_vec = np.zeros(self.k)
         if alpha is None:
             alpha = 1
-        return max_NSWplusR(self.mu_hat, alpha, r_vec, init_guess=init_guess, n=self.n, k=self.k)
+        return max_NSWplusR(self.mu_hat, alpha, r_vec * self.C, delt=self.delt, init_guess=init_guess, n=self.n, k=self.k)
     
     # run a single step of the UCB algorithm
     def run_step(self):
@@ -199,8 +201,8 @@ class MAFB_UCB:
 
 
 # wrapper for MAFB_UCB __init__
-def setup_UCB(mu_star, alpha_fn, checkpointing=None):
-    return MAFB_UCB(mu_star, alpha_fn, dist_mu=my_binom, checkpointing=checkpointing)
+def setup_UCB(mu_star, alpha_fn, checkpointing=None, delt=0.000001, C=1):
+    return MAFB_UCB(mu_star, alpha_fn, dist_mu=my_binom, checkpointing=checkpointing, delt=delt, C=C)
 
 # run UCB for either one step, n_steps steps, or up to T total steps
 def run_UCB(UCB, n_steps=None, T=None):
@@ -213,7 +215,7 @@ def run_UCB(UCB, n_steps=None, T=None):
         UCB.run_step()
 
 # get NSWs up to time T
-def results(mus, T, alpha_fn, checkpointing=None):
-    UCB = setup_UCB(mus, alpha_fn, checkpointing=checkpointing)
+def results(mus, T, alpha_fn, checkpointing=None, delt=0.000001, C=1):
+    UCB = setup_UCB(mus, alpha_fn, checkpointing=checkpointing, delt=delt, C=C)
     run_UCB(UCB, T=T)
     return UCB.NSWs, UCB.last_p, UCB.NSW_max, UCB.best_p
