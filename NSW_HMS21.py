@@ -85,7 +85,7 @@ def max_NSWplusR(mu, alpha, r_vec, init_guess=None, n=None, k=None, delt=0.0005)
         return NSWplusR(mu, p, alpha, r_vec, n=n, k=k)
     def local_gradNSWplusR(p):
         return gradNSWplusR(mu, p, alpha, r_vec, n=n, k=k)
-    return pgd.proj_grad_asc(k, local_NSWplusR, local_gradNSWplusR, lr=lr, lookback=25, delt=delt, init_guess=init_guess)
+    return pgd.proj_grad_asc(k, local_NSWplusR, local_gradNSWplusR, lr=lr, lookback=30, delt=delt, init_guess=init_guess)
 
 
 
