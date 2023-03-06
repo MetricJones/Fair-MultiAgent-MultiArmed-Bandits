@@ -112,6 +112,7 @@ class MAFB_UCB:
         self.last_p = None
         self.checkpointing = checkpointing
         self.C=C
+        self.delt = 0.001
         self.t = 1      # t is the next iteration to run,
         if initiate:    # so we've already run t-1 iterations
             self.initiate()
@@ -163,7 +164,7 @@ class MAFB_UCB:
             print("Iter: ",self.t)
             print("Guess: ",self.last_p)
         # Compute UCB offsets
-        r_vec = (12 * np.log(4 * self.n * self.k * self.t * np.sqrt(self.t)))
+        r_vec = (12 * np.log(4 * self.n * self.k * self.t / self.delt))
         r_vec = r_vec / self.ntj
         inv_mus = 1 - self.mu_hat
         inv_mus = np.sqrt(inv_mus * r_vec)
