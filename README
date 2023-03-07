@@ -9,6 +9,7 @@ The code for this is split into a small handful of files:
 - NSW.py: Implementation of our algorithm. Also contains functions
     for computing the NSW from the inputs.
 - NSW_HMS21.py: Similar to the previous file, but for HMS21
+- NSW_ineff.py: Similar to the previous file, but for the O(sqrt(KT)) algorithm
 - main.py: Contains the main functions for the testing. Includes:
     - test_MAB: runs a single test, generating mu if necessary
     - test_MAB_many: runs many tests, on N in n and K in k where n
